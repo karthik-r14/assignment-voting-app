@@ -47,9 +47,42 @@ App = {
       }).watch(function (error, event) {
         console.log("event triggered", event)
         // Reload when a new vote is recorded
-        App.render();
+        // App.render();
+        App.updateCounts();
       });
     });
+  },
+
+  updateCounts: function () {
+    $("#content").hide();
+    $("#loader").show();
+
+    App.contracts.Election.deployed().then(function (instance) {
+      electionInstance = instance;
+      return electionInstance.candidatesCount();
+    }).then(function (candidatesCount) {
+      for (var i = 1; i <= candidatesCount; i++) {
+        electionInstance.candidates(i).then(function (candidate) {
+
+          var id = candidate[0];
+          var voteCount = candidate[2];
+          var cell = document.getElementById('vc_' + id);
+          if (cell != null) {
+            cell.innerHTML = voteCount;
+          }
+        });
+      }
+      return electionInstance.voters(App.account);
+    }).then(function (hasVoted) {
+      // Do not allow a user to vote
+      if (hasVoted) {
+        $('#alreadyVotedMsg').show()
+        $('form').hide();
+      }
+    });
+
+    $("#content").show();
+    $("#loader").hide();
   },
 
   render: function () {
@@ -86,7 +119,10 @@ App = {
           var voteCount = candidate[2];
 
           // Render candidate Result
-          var candidateTemplate = "<tr><th>" + id + "</th><td>" + name + "</td><td>" + voteCount + "</td></tr>"
+          // var candidateTemplate = "<tr><th>" + id + "</th><td>" + name + "</td><td>" + voteCount + "</td></tr>"
+          var candidateTemplate = "<tr><th>" + id + "</th><td>" + name + "</td><td id='vc_" + id + "'>" + voteCount + "</td></tr>";
+
+
           candidatesResults.append(candidateTemplate);
 
           // Render candidate ballot option
@@ -98,6 +134,7 @@ App = {
     }).then(function (hasVoted) {
       // Do not allow a user to vote
       if (hasVoted) {
+        $('#alreadyVotedMsg').show()
         $('form').hide();
       }
       loader.hide();
